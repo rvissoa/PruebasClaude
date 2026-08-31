@@ -16,13 +16,27 @@ const SHOP_SCRIPT := preload("res://scripts/Shop.gd")
 
 enum State { MENU, PLAYING, GAME_OVER, SHOP }
 
+# --- Difficulty tuning ---------------------------------------------------
+# GRACE_OBSTACLES: first N gaps always spawn at minimum difficulty, so a kid
+#   gets a few easy passes to find the flap rhythm before anything tightens.
+# DIFFICULTY_SCORE_CAP: score at which difficulty reaches 100% (gap at its
+#   smallest, speed/spawn rate at their fastest). Raised from the original
+#   12 so the ramp takes a full short session to max out instead of ~15s.
+# GAP_SHRINK_FACTOR / SPEED_MULTIPLIER: how small/fast things get at 100%
+#   difficulty, as a fraction/multiple of the base values below. Softened
+#   from .72/1.5 so the hardest state is still passable, not punishing.
+const GRACE_OBSTACLES: float = 3.0
+const DIFFICULTY_SCORE_CAP: float = 30.0
+const GAP_SHRINK_FACTOR: float = 0.82
+const SPEED_MULTIPLIER: float = 1.3
+
 var state: int = State.MENU
 var dragon
 var obstacles: Array = []
 var spawn_timer: float = 0.0
 var spawn_interval: float = 1.6
 var base_speed: float = 240.0
-var base_gap: float = 340.0
+var base_gap: float = 380.0
 var rng := RandomNumberGenerator.new()
 
 var background
@@ -116,9 +130,10 @@ func _process(delta: float) -> void:
 			obstacle.queue_free()
 
 func _spawn_obstacle() -> void:
-	var difficulty: float = clamp(GameState.run_score / 12.0, 0.0, 1.0)
-	var gap: float = lerp(base_gap, base_gap * 0.72, difficulty)
-	var speed: float = lerp(base_speed, base_speed * 1.5, difficulty)
+	var ramp_score: float = max(0.0, GameState.run_score - GRACE_OBSTACLES)
+	var difficulty: float = clamp(ramp_score / DIFFICULTY_SCORE_CAP, 0.0, 1.0)
+	var gap: float = lerp(base_gap, base_gap * GAP_SHRINK_FACTOR, difficulty)
+	var speed: float = lerp(base_speed, base_speed * SPEED_MULTIPLIER, difficulty)
 	spawn_interval = lerp(1.6, 1.05, difficulty)
 
 	var margin: float = 160.0
