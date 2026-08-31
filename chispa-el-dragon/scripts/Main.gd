@@ -14,6 +14,17 @@ const MENU_SCRIPT := preload("res://scripts/MainMenu.gd")
 const GAMEOVER_SCRIPT := preload("res://scripts/GameOver.gd")
 const SHOP_SCRIPT := preload("res://scripts/Shop.gd")
 
+const POINT_SOUND := preload("res://assets/audio/sfx/point.wav")
+const GEM_SOUND := preload("res://assets/audio/sfx/gem.wav")
+
+# Background music is optional: drop a royalty-free .ogg or .mp3 at one of
+# these paths and it loops automatically, no code changes needed. Until then
+# the game just runs silent on music (SFX still play normally).
+const MUSIC_CANDIDATES := [
+	"res://assets/audio/music/background.ogg",
+	"res://assets/audio/music/background.mp3",
+]
+
 enum State { MENU, PLAYING, GAME_OVER, SHOP }
 
 # --- Difficulty tuning ---------------------------------------------------
@@ -44,12 +55,28 @@ var hud
 var main_menu
 var game_over_screen
 var shop_screen
+var point_player: AudioStreamPlayer
+var gem_player: AudioStreamPlayer
+var music_player: AudioStreamPlayer
 
 func _ready() -> void:
 	rng.randomize()
 
 	background = BACKGROUND_SCRIPT.new()
 	add_child(background)
+
+	point_player = AudioStreamPlayer.new()
+	point_player.stream = POINT_SOUND
+	add_child(point_player)
+
+	gem_player = AudioStreamPlayer.new()
+	gem_player.stream = GEM_SOUND
+	add_child(gem_player)
+
+	music_player = AudioStreamPlayer.new()
+	music_player.volume_db = -8.0
+	add_child(music_player)
+	_start_music_if_available()
 
 	dragon = DRAGON_SCRIPT.new()
 	dragon.position = Vector2(SCREEN_WIDTH * 0.3, SCREEN_HEIGHT * 0.5)
@@ -75,6 +102,18 @@ func _ready() -> void:
 	add_child(shop_screen)
 
 	_go_to_menu()
+
+func _start_music_if_available() -> void:
+	for path in MUSIC_CANDIDATES:
+		if ResourceLoader.exists(path):
+			var stream = load(path)
+			if stream == null:
+				continue
+			if "loop" in stream:
+				stream.loop = true
+			music_player.stream = stream
+			music_player.play()
+			return
 
 func _unhandled_input(event: InputEvent) -> void:
 	if state == State.PLAYING and event.is_action_pressed("tap"):
@@ -159,10 +198,12 @@ func _on_dragon_passed_zone(area: Area2D) -> void:
 
 	GameState.add_score()
 	hud.update_score(GameState.run_score)
+	point_player.play()
 
 	if obstacle.has_gem:
 		GameState.add_gem()
 		hud.update_gems(GameState.total_gems)
+		gem_player.play()
 
 func _on_dragon_died() -> void:
 	state = State.GAME_OVER

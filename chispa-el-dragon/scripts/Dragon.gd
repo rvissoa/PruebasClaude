@@ -17,9 +17,14 @@ const SPRITE_DIR := "res://assets/sprites/"
 const SKIN_IDS := ["fuego", "hielo", "bosque", "tormenta", "dorado"]
 const FLAP_FPS := 7.0
 
+const FLAP_SOUND := preload("res://assets/audio/sfx/flap.wav")
+const HIT_SOUND := preload("res://assets/audio/sfx/hit.wav")
+
 var velocity_y: float = 0.0
 var alive: bool = true
 var sprite: AnimatedSprite2D
+var flap_player: AudioStreamPlayer
+var hit_player: AudioStreamPlayer
 var _frames_by_skin: Dictionary = {}
 
 func _ready() -> void:
@@ -37,6 +42,14 @@ func _ready() -> void:
 	sprite = AnimatedSprite2D.new()
 	sprite.centered = true
 	add_child(sprite)
+
+	flap_player = AudioStreamPlayer.new()
+	flap_player.stream = FLAP_SOUND
+	add_child(flap_player)
+
+	hit_player = AudioStreamPlayer.new()
+	hit_player.stream = HIT_SOUND
+	add_child(hit_player)
 
 	_apply_skin(GameState.selected_skin)
 	area_entered.connect(_on_area_entered)
@@ -68,6 +81,7 @@ func flap() -> void:
 	if not alive:
 		return
 	velocity_y = FLAP_IMPULSE
+	flap_player.play()
 
 func _physics_process(delta: float) -> void:
 	if not alive:
@@ -90,6 +104,7 @@ func die() -> void:
 	alive = false
 	died.emit()
 	sprite.stop()
+	hit_player.play()
 
 func _on_area_entered(area: Area2D) -> void:
 	if not alive:
