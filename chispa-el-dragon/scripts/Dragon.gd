@@ -1,6 +1,8 @@
 extends Area2D
 
-# Player character: tap to flap, gravity pulls down, drawn procedurally (no sprite needed).
+# Player character: tap to flap, gravity pulls down. Rendered with a 3-frame
+# flap animation (assets/sprites/dragon_<skin>_0/1/2.png), one set of frames
+# per shop skin. Collision stays a simple circle regardless of skin/frame.
 
 signal died
 signal passed_zone(area)
@@ -11,9 +13,14 @@ const MAX_FALL_SPEED := 700.0
 const MAX_RISE_SPEED := -420.0
 const SCREEN_HEIGHT := 1280.0
 
+const SPRITE_DIR := "res://assets/sprites/"
+const SKIN_IDS := ["fuego", "hielo", "bosque", "tormenta", "dorado"]
+const FLAP_FPS := 7.0
+
 var velocity_y: float = 0.0
 var alive: bool = true
-var body_color: Color = Color(0.95, 0.35, 0.25)
+var sprite: AnimatedSprite2D
+var _frames_by_skin: Dictionary = {}
 
 func _ready() -> void:
 	collision_layer = 1
@@ -25,17 +32,37 @@ func _ready() -> void:
 	shape.shape = circle
 	add_child(shape)
 
-	body_color = GameState.get_selected_color()
+	_build_sprite_frames()
+
+	sprite = AnimatedSprite2D.new()
+	sprite.centered = true
+	add_child(sprite)
+
+	_apply_skin(GameState.selected_skin)
 	area_entered.connect(_on_area_entered)
-	queue_redraw()
+
+func _build_sprite_frames() -> void:
+	for skin_id in SKIN_IDS:
+		var frames := SpriteFrames.new()
+		frames.set_animation_loop("default", true)
+		frames.set_animation_speed("default", FLAP_FPS)
+		for i in range(3):
+			var tex: Texture2D = load("%sdragon_%s_%d.png" % [SPRITE_DIR, skin_id, i])
+			frames.add_frame("default", tex)
+		_frames_by_skin[skin_id] = frames
+
+func _apply_skin(skin_id: String) -> void:
+	if not _frames_by_skin.has(skin_id):
+		return
+	sprite.sprite_frames = _frames_by_skin[skin_id]
+	sprite.play("default")
 
 func reset(start_position: Vector2) -> void:
 	position = start_position
 	velocity_y = 0.0
 	rotation = 0.0
 	alive = true
-	body_color = GameState.get_selected_color()
-	queue_redraw()
+	_apply_skin(GameState.selected_skin)
 
 func flap() -> void:
 	if not alive:
@@ -62,6 +89,7 @@ func die() -> void:
 		return
 	alive = false
 	died.emit()
+	sprite.stop()
 
 func _on_area_entered(area: Area2D) -> void:
 	if not alive:
@@ -70,15 +98,3 @@ func _on_area_entered(area: Area2D) -> void:
 		die()
 	elif area.is_in_group("score_zone"):
 		passed_zone.emit(area)
-
-func _draw() -> void:
-	draw_circle(Vector2.ZERO, 24, body_color)
-	draw_circle(Vector2(2, 6), 14, body_color.lightened(0.35))
-	draw_circle(Vector2(10, -8), 4, Color.WHITE)
-	draw_circle(Vector2(11, -8), 2, Color.BLACK)
-
-	var wing := PackedVector2Array([Vector2(-6, -4), Vector2(-30, -20), Vector2(-14, 10)])
-	draw_colored_polygon(wing, body_color.darkened(0.15))
-
-	var snout := PackedVector2Array([Vector2(18, -4), Vector2(34, 0), Vector2(18, 6)])
-	draw_colored_polygon(snout, body_color.darkened(0.1))

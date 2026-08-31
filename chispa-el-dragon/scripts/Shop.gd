@@ -36,9 +36,15 @@ func _build_row(skin: Dictionary, y: int) -> Control:
 	var row := Control.new()
 	row.position = Vector2(60, y)
 
-	var swatch := ColorRect.new()
-	swatch.color = skin["color"]
+	var swatch_bg := ColorRect.new()
+	swatch_bg.color = Color(1, 1, 1, 0.08)
+	swatch_bg.size = Vector2(90, 90)
+	row.add_child(swatch_bg)
+
+	var swatch := TextureRect.new()
+	swatch.texture = load("res://assets/sprites/dragon_%s_1.png" % skin["id"])
 	swatch.size = Vector2(90, 90)
+	swatch.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 	row.add_child(swatch)
 
 	var name_label := Label.new()

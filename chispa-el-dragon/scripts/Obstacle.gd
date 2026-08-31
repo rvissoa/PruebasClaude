@@ -2,16 +2,19 @@ extends Node2D
 
 # A pair of magic-crystal pillars with a gap to fly through, plus a score zone
 # and optionally a gem in the middle of the gap. Moves left at a set speed.
+# Visuals: a tileable crystal texture stretched to each pillar's height, so
+# the art always matches the collision rectangles exactly.
 
 const PILLAR_WIDTH := 70.0
 const SCREEN_HEIGHT := 1280.0
+const PILLAR_TEXTURE := preload("res://assets/sprites/pillar_crystal.png")
+const GEM_TEXTURE := preload("res://assets/sprites/gem.png")
 
 var gap_y: float = 400.0
 var gap_size: float = 320.0
 var speed: float = 220.0
 var has_gem: bool = false
 var scored: bool = false
-var pillar_color := Color(0.55, 0.35, 0.75)
 
 func setup(p_gap_y: float, p_gap_size: float, p_speed: float, p_has_gem: bool) -> void:
 	gap_y = p_gap_y
@@ -19,7 +22,7 @@ func setup(p_gap_y: float, p_gap_size: float, p_speed: float, p_has_gem: bool) -
 	speed = p_speed
 	has_gem = p_has_gem
 	_build_colliders()
-	queue_redraw()
+	_build_visuals()
 
 func _build_colliders() -> void:
 	var top_height: float = max(gap_y - gap_size / 2.0, 1.0)
@@ -62,20 +65,34 @@ func _build_colliders() -> void:
 	score_area.set_meta("obstacle", self)
 	add_child(score_area)
 
+func _build_visuals() -> void:
+	var top_height: float = max(gap_y - gap_size / 2.0, 1.0)
+	var top_visual := NinePatchRect.new()
+	top_visual.texture = PILLAR_TEXTURE
+	top_visual.axis_stretch_vertical = NinePatchRect.AXIS_STRETCH_MODE_TILE
+	top_visual.position = Vector2(-PILLAR_WIDTH / 2.0, 0)
+	top_visual.size = Vector2(PILLAR_WIDTH, top_height)
+	top_visual.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(top_visual)
+
+	var bottom_top: float = gap_y + gap_size / 2.0
+	var bottom_height: float = max(SCREEN_HEIGHT - bottom_top, 1.0)
+	var bottom_visual := NinePatchRect.new()
+	bottom_visual.texture = PILLAR_TEXTURE
+	bottom_visual.axis_stretch_vertical = NinePatchRect.AXIS_STRETCH_MODE_TILE
+	bottom_visual.position = Vector2(-PILLAR_WIDTH / 2.0, bottom_top)
+	bottom_visual.size = Vector2(PILLAR_WIDTH, bottom_height)
+	bottom_visual.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(bottom_visual)
+
+	if has_gem:
+		var gem_sprite := Sprite2D.new()
+		gem_sprite.texture = GEM_TEXTURE
+		gem_sprite.position = Vector2(0, gap_y)
+		add_child(gem_sprite)
+
 func _physics_process(delta: float) -> void:
 	position.x -= speed * delta
 
 func is_off_screen() -> bool:
 	return position.x < -PILLAR_WIDTH - 20
-
-func _draw() -> void:
-	var top_height: float = max(gap_y - gap_size / 2.0, 1.0)
-	var bottom_top: float = gap_y + gap_size / 2.0
-	var bottom_height: float = max(SCREEN_HEIGHT - bottom_top, 1.0)
-
-	draw_rect(Rect2(Vector2(-PILLAR_WIDTH / 2.0, 0), Vector2(PILLAR_WIDTH, top_height)), pillar_color)
-	draw_rect(Rect2(Vector2(-PILLAR_WIDTH / 2.0, bottom_top), Vector2(PILLAR_WIDTH, bottom_height)), pillar_color)
-
-	if has_gem:
-		draw_circle(Vector2(0, gap_y), 13, Color(1.0, 0.85, 0.25))
-		draw_circle(Vector2(-4, gap_y - 4), 4, Color(1, 1, 1, 0.6))
